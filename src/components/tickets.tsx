@@ -1,9 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { ViewControls } from './view-controls';
 import { CajaEntityList, CajaSearchBar, CajaStatsCard, CajaHeader } from './ui/design-system';
 import { useTicketData, TicketData } from '../hooks/useEntityData';
+import { CreateTicketModal } from './CreateTicketModal';
+import { TicketService, type TicketWithDetails } from '@/services/tickets';
+import { useAuth } from '@/hooks/useAuth';
 import { 
   Plus, 
   RefreshCw,
@@ -17,6 +20,7 @@ import {
 } from 'lucide-react';
 
 export function Tickets() {
+  const { user, isAuthenticated } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
@@ -25,91 +29,60 @@ export function Tickets() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [sortBy, setSortBy] = useState('created');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [tickets, setTickets] = useState<TicketWithDetails[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const { transformTicketToEntity } = useTicketData();
 
-  const tickets: TicketData[] = [
-    {
-      id: 'TIC-001',
-      title: 'Problema no login do sistema',
-      description: 'Usuário relatando dificuldades para acessar sua conta após a atualização do sistema. Erro 500 intermitente.',
-      status: 'open',
-      priority: 'high',
-      client: 'Maria Santos',
-      assignee: 'João Silva',
-      created: '2024-01-15T10:00:00Z',
-      updated: '2024-01-15T14:30:00Z',
-      category: 'Técnico',
-      tags: ['login', 'bug', 'urgente'],
-      messages: 12
-    },
-    {
-      id: 'TIC-002',
-      title: 'Solicitação de nova funcionalidade',
-      description: 'Cliente solicitando implementação de relatórios personalizados no dashboard principal.',
-      status: 'in_progress',
-      priority: 'medium',
-      client: 'João Silva',
-      assignee: 'Ana Costa',
-      created: '2024-01-14T09:15:00Z',
-      updated: '2024-01-15T11:20:00Z',
-      category: 'Feature Request',
-      tags: ['enhancement', 'dashboard'],
-      messages: 8
-    },
-    {
-      id: 'TIC-003',
-      title: 'Erro na geração de relatórios',
-      description: 'Relatórios mensais não estão sendo gerados corretamente. Dados inconsistentes na base.',
-      status: 'resolved',
-      priority: 'high',
-      client: 'Ana Costa',
-      assignee: 'Carlos Oliveira',
-      created: '2024-01-13T16:45:00Z',
-      updated: '2024-01-15T09:00:00Z',
-      category: 'Bug',
-      tags: ['relatórios', 'dados'],
-      messages: 15
-    },
-    {
-      id: 'TIC-004',
-      title: 'Dúvida sobre cobrança',
-      description: 'Cliente questionando valores cobrados no último mês. Necessário verificar histórico de uso.',
-      status: 'open',
-      priority: 'low',
-      client: 'Carlos Oliveira',
-      assignee: 'Fernanda Lima',
-      created: '2024-01-12T14:20:00Z',
-      updated: '2024-01-14T16:10:00Z',
-      category: 'Suporte',
-      tags: ['billing', 'suporte'],
-      messages: 5
-    },
-    {
-      id: 'TIC-005',
-      title: 'Sistema lento na navegação',
-      description: 'Performance degradada em todas as páginas do sistema. Necessário investigar causa raiz.',
-      status: 'in_progress',
-      priority: 'urgent',
-      client: 'Fernanda Lima',
-      assignee: 'João Silva',
-      created: '2024-01-11T11:30:00Z',
-      updated: '2024-01-15T13:45:00Z',
-      category: 'Performance',
-      tags: ['performance', 'crítico'],
-      messages: 20
+  // Carregar tickets do backend
+  const loadTickets = async () => {
+    if (!isAuthenticated) return;
+    
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const filters = {
+        status: statusFilter !== 'all' ? statusFilter : undefined,
+        priority: priorityFilter !== 'all' ? priorityFilter : undefined,
+      };
+      
+      const { data } = await TicketService.getTickets(1, 100, filters);
+      setTickets(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao carregar tickets');
+      console.error('Erro ao carregar tickets:', err);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+  // Carregar tickets quando o componente montar ou filtros mudarem
+  useEffect(() => {
+    loadTickets();
+  }, [isAuthenticated, statusFilter, priorityFilter]);
+
+  // Função para atualizar tickets
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await loadTickets();
+    setIsRefreshing(false);
+  };
+
+  // Função chamada quando um novo ticket é criado
+  const handleTicketCreated = (newTicket: any) => {
+    setTickets(prev => [newTicket, ...prev]);
+  };
 
   const filteredAndSortedTickets = tickets
     .filter(ticket => {
       const matchesSearch = ticket.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           ticket.client.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           ticket.client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            ticket.id.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesStatus = statusFilter === 'all' || ticket.status === statusFilter;
-      const matchesPriority = priorityFilter === 'all' || ticket.priority === priorityFilter;
       
-      return matchesSearch && matchesStatus && matchesPriority;
+      return matchesSearch;
     })
     .sort((a, b) => {
       let aValue, bValue;
@@ -129,20 +102,20 @@ export function Tickets() {
           bValue = priorityOrder[b.priority as keyof typeof priorityOrder];
           break;
         case 'client':
-          aValue = a.client.toLowerCase();
-          bValue = b.client.toLowerCase();
+          aValue = a.client.name.toLowerCase();
+          bValue = b.client.name.toLowerCase();
           break;
         case 'created':
-          aValue = new Date(a.created).getTime();
-          bValue = new Date(b.created).getTime();
+          aValue = new Date(a.created_at).getTime();
+          bValue = new Date(b.created_at).getTime();
           break;
         case 'updated':
-          aValue = new Date(a.updated).getTime();
-          bValue = new Date(b.updated).getTime();
+          aValue = new Date(a.updated_at).getTime();
+          bValue = new Date(b.updated_at).getTime();
           break;
         default:
-          aValue = new Date(a.created).getTime();
-          bValue = new Date(b.created).getTime();
+          aValue = new Date(a.created_at).getTime();
+          bValue = new Date(b.created_at).getTime();
       }
       
       if (typeof aValue === 'string' && typeof bValue === 'string') {
@@ -165,8 +138,25 @@ export function Tickets() {
   const stats = getTicketStats();
 
   // Transformar tickets para o formato unificado
-  const entityItems = filteredAndSortedTickets.map(ticket => ({
-    ...transformTicketToEntity(ticket),
+  const entityItems = filteredAndSortedTickets.map(ticket => {
+    // Converter TicketWithDetails para TicketData (formato esperado pelo transformTicketToEntity)
+    const ticketData: TicketData = {
+      id: ticket.id,
+      title: ticket.title,
+      description: ticket.description,
+      status: ticket.status,
+      priority: ticket.priority,
+      client: ticket.client.name,
+      assignee: ticket.assigned_user?.full_name || 'Não atribuído',
+      created: ticket.created_at,
+      updated: ticket.updated_at,
+      category: 'Suporte', // Pode ser expandido no futuro
+      tags: [], // Pode ser expandido no futuro
+      messages: ticket.conversations_count
+    };
+
+    return {
+      ...transformTicketToEntity(ticketData),
     selected: selectedTicket === ticket.id,
     onClick: () => setSelectedTicket(selectedTicket === ticket.id ? null : ticket.id),
     actions: (
@@ -174,7 +164,8 @@ export function Tickets() {
         <MoreVertical className="h-4 w-4" />
       </Button>
     )
-  }));
+    };
+  });
 
   return (
     <div className="flex flex-col h-full">
@@ -192,16 +183,17 @@ export function Tickets() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => {
-                  setIsRefreshing(true);
-                  setTimeout(() => setIsRefreshing(false), 1000);
-                }}
+                onClick={handleRefresh}
                 disabled={isRefreshing}
               >
                 <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
                 Atualizar
               </Button>
-              <Button className="bg-[var(--caja-yellow)] hover:bg-[var(--caja-yellow)]/90 text-[var(--caja-black)] shadow-sm">
+              <Button 
+                className="bg-[var(--caja-yellow)] hover:bg-[var(--caja-yellow)]/90 text-[var(--caja-black)] shadow-sm"
+                onClick={() => setShowCreateModal(true)}
+                disabled={!isAuthenticated}
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Novo Ticket
               </Button>
@@ -312,6 +304,24 @@ export function Tickets() {
       {/* Content Area */}
       <div className="flex-1 overflow-auto">
         <div className="p-6">
+          {loading ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="text-center space-y-2">
+                <RefreshCw className="mx-auto h-8 w-8 animate-spin text-[var(--muted-foreground)]" />
+                <p className="text-sm text-[var(--muted-foreground)]">Carregando tickets...</p>
+              </div>
+            </div>
+          ) : error ? (
+            <div className="text-center space-y-2">
+              <AlertCircle className="mx-auto h-12 w-12 text-red-500" />
+              <p className="text-lg font-medium text-red-600">Erro ao carregar tickets</p>
+              <p className="text-sm text-[var(--muted-foreground)]">{error}</p>
+              <Button variant="outline" onClick={handleRefresh} className="mt-4">
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Tentar novamente
+              </Button>
+            </div>
+          ) : (
           <CajaEntityList
             items={entityItems}
             viewMode={viewMode}
@@ -324,11 +334,28 @@ export function Tickets() {
                 <p className="text-sm text-[var(--muted-foreground)]">
                   Tente ajustar seus filtros de pesquisa ou crie um novo ticket
                 </p>
+                  {isAuthenticated && (
+                    <Button 
+                      className="mt-4 bg-[var(--caja-yellow)] hover:bg-[var(--caja-yellow)]/90 text-[var(--caja-black)]"
+                      onClick={() => setShowCreateModal(true)}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Criar Primeiro Ticket
+                    </Button>
+                  )}
               </div>
             }
           />
+          )}
         </div>
       </div>
+
+      {/* Modal de Criação de Ticket */}
+      <CreateTicketModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onTicketCreated={handleTicketCreated}
+      />
     </div>
   );
 }
