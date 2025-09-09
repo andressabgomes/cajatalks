@@ -23,9 +23,11 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 
 // Hooks
 import { useNotifications } from './components/notifications';
+import { useAuth } from './hooks/useAuth';
+import { AppProvider } from './contexts/AppContext';
 
-export default function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+function AppContent() {
+  const { user, loading, isAuthenticated } = useAuth();
   const [currentPage, setCurrentPage] = useState<'dashboard' | 'inbox' | 'tickets' | 'clients' | 'settings' | 'profile' | 'team' | 'reports' | 'knowledge-base' | 'integrations' | 'activity-log'>('dashboard');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -35,17 +37,15 @@ export default function App() {
   
   const { NotificationSystem, showSuccess, showInfo } = useNotifications();
 
-  // Authentication handlers
-  const handleLogin = () => {
-    setIsLoggedIn(true);
-    showSuccess('Bem-vindo!', 'Login realizado com sucesso');
-    
-    // Check if user is new (for demo purposes, always show onboarding)
-    const isNewUser = !localStorage.getItem('cajaTalks_onboardingCompleted');
-    if (isNewUser) {
-      setTimeout(() => setIsOnboardingOpen(true), 1000);
+  // Check if user is new for onboarding
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      const isNewUser = !localStorage.getItem('cajaTalks_onboardingCompleted');
+      if (isNewUser) {
+        setTimeout(() => setIsOnboardingOpen(true), 1000);
+      }
     }
-  };
+  }, [isAuthenticated, user]);
 
   const handleOnboardingComplete = () => {
     localStorage.setItem('cajaTalks_onboardingCompleted', 'true');
@@ -130,11 +130,35 @@ export default function App() {
     }
   };
 
-  // Render login screen if not authenticated
-  if (!isLoggedIn) {
+  // Loading screen
+  if (loading) {
     return (
       <ErrorBoundary>
-        <Login onLogin={handleLogin} />
+        <div className="h-screen flex items-center justify-center bg-[var(--background)]">
+          <div className="text-center space-y-4">
+            <CajaLogoWithText 
+              logoSize="lg" 
+              textSize="xl" 
+              variant="default"
+              animated={true}
+            />
+            <div className="flex items-center justify-center space-x-2">
+              <div className="w-2 h-2 bg-[var(--caja-yellow)] rounded-full animate-bounce"></div>
+              <div className="w-2 h-2 bg-[var(--caja-yellow)] rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+              <div className="w-2 h-2 bg-[var(--caja-yellow)] rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+            </div>
+            <p className="text-sm text-[var(--muted-foreground)]">Carregando...</p>
+          </div>
+        </div>
+      </ErrorBoundary>
+    );
+  }
+
+  // Render login screen if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <ErrorBoundary>
+        <Login />
       </ErrorBoundary>
     );
   }
@@ -229,5 +253,13 @@ export default function App() {
         <NotificationSystem />
       </div>
     </ErrorBoundary>
+  );
+}
+
+export default function App() {
+  return (
+    <AppProvider>
+      <AppContent />
+    </AppProvider>
   );
 }

@@ -1,18 +1,18 @@
 import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { Eye, EyeOff, Sun, Moon } from 'lucide-react';
+import { Eye, EyeOff, Sun, Moon, AlertCircle } from 'lucide-react';
 import { CajaLogo } from './ui/caja-logo';
+import { useAuth } from '../hooks/useAuth';
+import { Alert, AlertDescription } from './ui/alert';
 
-interface LoginProps {
-  onLogin: () => void;
-}
-
-export function Login({ onLogin }: LoginProps) {
+export function Login() {
+  const { signIn, signUp, loading, error } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
 
   useEffect(() => {
@@ -33,13 +33,17 @@ export function Login({ onLogin }: LoginProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     
-    // Simulate login
-    setTimeout(() => {
-      setIsLoading(false);
-      onLogin();
-    }, 1000);
+    try {
+      if (isSignUp) {
+        await signUp(email, password, fullName);
+      } else {
+        await signIn(email, password);
+      }
+    } catch (err) {
+      // Error is handled by useAuth hook
+      console.error('Authentication error:', err);
+    }
   };
 
   return (
@@ -70,10 +74,10 @@ export function Login({ onLogin }: LoginProps) {
           
           <div className="space-y-3">
             <h1 className="text-3xl font-semibold tracking-tight text-foreground">
-              Bem-vindo
+              {isSignUp ? 'Criar Conta' : 'Bem-vindo'}
             </h1>
             <p className="text-base text-muted-foreground font-normal">
-              Entre na sua conta do Cajá Talks
+              {isSignUp ? 'Crie sua conta no Cajá Talks' : 'Entre na sua conta do Cajá Talks'}
             </p>
           </div>
         </div>
@@ -82,6 +86,23 @@ export function Login({ onLogin }: LoginProps) {
         <div className="space-y-8">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-5">
+              {isSignUp && (
+                <div className="space-y-3">
+                  <label htmlFor="fullName" className="block text-sm font-medium text-foreground">
+                    Nome Completo
+                  </label>
+                  <Input
+                    id="fullName"
+                    type="text"
+                    placeholder="Digite seu nome completo"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    className="h-12 text-base rounded-xl border-border bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200"
+                    required={isSignUp}
+                  />
+                </div>
+              )}
+              
               <div className="space-y-3">
                 <label htmlFor="email" className="block text-sm font-medium text-foreground">
                   Email
@@ -122,60 +143,67 @@ export function Login({ onLogin }: LoginProps) {
               </div>
             </div>
 
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <input
-                  type="checkbox"
-                  id="remember"
-                  className="h-4 w-4 rounded border-border text-primary focus:ring-primary/20 focus:ring-2 bg-background"
-                />
-                <label htmlFor="remember" className="text-sm font-normal text-muted-foreground">
-                  Lembrar de mim
-                </label>
+            {!isSignUp && (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="checkbox"
+                    id="remember"
+                    className="h-4 w-4 rounded border-border text-primary focus:ring-primary/20 focus:ring-2 bg-background"
+                  />
+                  <label htmlFor="remember" className="text-sm font-normal text-muted-foreground">
+                    Lembrar de mim
+                  </label>
+                </div>
+                <button
+                  type="button"
+                  className="text-sm font-medium text-primary hover:text-primary/80 transition-colors duration-200"
+                >
+                  Esqueceu a senha?
+                </button>
               </div>
-              <button
-                type="button"
-                className="text-sm font-medium text-primary hover:text-primary/80 transition-colors duration-200"
-              >
-                Esqueceu a senha?
-              </button>
-            </div>
+            )}
+
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
 
             <Button
               type="submit"
               className="w-full h-12 text-base font-medium rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-sm"
-              disabled={isLoading}
+              disabled={loading}
             >
-              {isLoading ? (
+              {loading ? (
                 <div className="flex items-center justify-center space-x-3">
                   <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin"></div>
-                  <span>Entrando...</span>
+                  <span>{isSignUp ? 'Criando conta...' : 'Entrando...'}</span>
                 </div>
               ) : (
-                'Continuar'
+                isSignUp ? 'Criar Conta' : 'Entrar'
               )}
             </Button>
           </form>
 
-          {/* Divider */}
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-border"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-background text-muted-foreground font-normal">ou</span>
-            </div>
-          </div>
-
-          {/* Sign up link */}
+          {/* Toggle between login and signup */}
           <div className="text-center">
-            <p className="text-sm font-normal text-muted-foreground">
-              Não tem uma conta?{' '}
-              <button className="font-medium text-primary hover:text-primary/80 transition-colors duration-200">
-                Criar conta
+            <p className="text-sm text-muted-foreground">
+              {isSignUp ? 'Já tem uma conta?' : 'Não tem uma conta?'}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSignUp(!isSignUp);
+                  setError(null);
+                }}
+                className="ml-1 text-sm font-medium text-primary hover:text-primary/80 transition-colors duration-200"
+              >
+                {isSignUp ? 'Faça login' : 'Crie uma conta'}
               </button>
             </p>
           </div>
+
         </div>
       </div>
     </div>
