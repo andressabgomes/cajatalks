@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Executar Schema SQL - Cajá Talks</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2d3748;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+        .step {
+            background: #f7fafc;
+            border-left: 4px solid #4299e1;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        .step h3 {
+            color: #2d3748;
+            margin-top: 0;
+        }
+        .sql-container {
+            background: #1a202c;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            overflow-x: auto;
+        }
+        .sql-container pre {
+            margin: 0;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .copy-btn {
+            background: #4299e1;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 0;
+            transition: background 0.3s;
+        }
+        .copy-btn:hover {
+            background: #3182ce;
+        }
+        .success {
+            background: #c6f6d5;
+            color: #22543d;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #38a169;
+        }
+        .warning {
+            background: #fef5e7;
+            color: #744210;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #ed8936;
+        }
+        .link {
+            color: #4299e1;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .link:hover {
+            text-decoration: underline;
+        }
+        .code {
+            background: #edf2f7;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            color: #2d3748;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Executar Schema SQL - Cajá Talks</h1>
+        
+        <div class="success">
+            <h3>✅ Status Atual</h3>
+            <p><strong>Conexão com Supabase:</strong> ✅ Funcionando</p>
+            <p><strong>Credenciais:</strong> ✅ Configuradas</p>
+            <p><strong>Schema SQL:</strong> ❌ Pendente de execução</p>
+        </div>
+
+        <div class="step">
+            <h3>📋 Passo 1: Acesse o Painel do Supabase</h3>
+            <p>Clique no link abaixo para abrir o painel do Supabase:</p>
+            <p><a href="https://supabase.com/dashboard/project/wsphcdeljnboalxsvuun" target="_blank" class="link">
+                🔗 Abrir Painel do Supabase
+            </a></p>
+        </div>
+
+        <div class="step">
+            <h3>📝 Passo 2: Execute o Schema SQL</h3>
+            <p>1. No painel do Supabase, clique em <span class="code">"SQL Editor"</span></p>
+            <p>2. Clique em <span class="code">"New Query"</span></p>
+            <p>3. Copie o SQL abaixo (clique no botão "Copiar SQL")</p>
+            <p>4. Cole no editor SQL</p>
+            <p>5. Clique em <span class="code">"Run"</span> (botão azul)</p>
+            <p>6. Aguarde a execução completar</p>
+        </div>
+
+        <div class="sql-container">
+            <button class="copy-btn" onclick="copySQL()">📋 Copiar SQL</button>
+            <pre id="sqlContent">-- Enable necessary extensions
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- Create users table (extends auth.users)
+CREATE TABLE IF NOT EXISTS public.users (
+    id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
+    email TEXT UNIQUE NOT NULL,
+    full_name TEXT,
+    avatar_url TEXT,
+    role TEXT CHECK (role IN ('admin', 'agent', 'client')) DEFAULT 'client',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create clients table
+CREATE TABLE IF NOT EXISTS public.clients (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    phone TEXT,
+    company TEXT,
+    status TEXT CHECK (status IN ('active', 'inactive', 'suspended')) DEFAULT 'active',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create tickets table
+CREATE TABLE IF NOT EXISTS public.tickets (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL,
+    status TEXT CHECK (status IN ('open', 'in_progress', 'resolved', 'closed')) DEFAULT 'open',
+    priority TEXT CHECK (priority IN ('low', 'medium', 'high', 'urgent')) DEFAULT 'medium',
+    client_id UUID REFERENCES public.clients(id) ON DELETE CASCADE NOT NULL,
+    assigned_to UUID REFERENCES public.users(id) ON DELETE SET NULL,
+    created_by UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    resolved_at TIMESTAMP WITH TIME ZONE
+);
+
+-- Create conversations table
+CREATE TABLE IF NOT EXISTS public.conversations (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    ticket_id UUID REFERENCES public.tickets(id) ON DELETE CASCADE NOT NULL,
+    message TEXT NOT NULL,
+    sender_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+    sender_type TEXT CHECK (sender_type IN ('user', 'client')) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create notifications table
+CREATE TABLE IF NOT EXISTS public.notifications (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+    title TEXT NOT NULL,
+    message TEXT NOT NULL,
+    type TEXT CHECK (type IN ('info', 'warning', 'error', 'success')) DEFAULT 'info',
+    read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create indexes for better performance
+CREATE INDEX IF NOT EXISTS idx_tickets_client_id ON public.tickets(client_id);
+CREATE INDEX IF NOT EXISTS idx_tickets_assigned_to ON public.tickets(assigned_to);
+CREATE INDEX IF NOT EXISTS idx_tickets_status ON public.tickets(status);
+CREATE INDEX IF NOT EXISTS idx_tickets_priority ON public.tickets(priority);
+CREATE INDEX IF NOT EXISTS idx_tickets_created_at ON public.tickets(created_at);
+
+CREATE INDEX IF NOT EXISTS idx_conversations_ticket_id ON public.conversations(ticket_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_sender_id ON public.conversations(sender_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_created_at ON public.conversations(created_at);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON public.notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_read ON public.notifications(read);
+CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON public.notifications(created_at);
+
+-- Create updated_at trigger function
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- Create triggers for updated_at
+CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON public.users
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_clients_updated_at BEFORE UPDATE ON public.clients
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_tickets_updated_at BEFORE UPDATE ON public.tickets
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Create function to handle new user registration
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO public.users (id, email, full_name, avatar_url, role)
+    VALUES (
+        NEW.id,
+        NEW.email,
+        NEW.raw_user_meta_data->>'full_name',
+        NEW.raw_user_meta_data->>'avatar_url',
+        COALESCE(NEW.raw_user_meta_data->>'role', 'client')
+    );
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Create trigger for new user registration
+CREATE TRIGGER on_auth_user_created
+    AFTER INSERT ON auth.users
+    FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- Enable Row Level Security (RLS)
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.clients ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.tickets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.conversations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+
+-- Create RLS policies
+
+-- Users can read their own profile and admins can read all
+CREATE POLICY "Users can read own profile" ON public.users
+    FOR SELECT USING (auth.uid() = id OR EXISTS (
+        SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('admin', 'agent')
+    ));
+
+-- Users can update their own profile
+CREATE POLICY "Users can update own profile" ON public.users
+    FOR UPDATE USING (auth.uid() = id);
+
+-- Admins and agents can read all clients
+CREATE POLICY "Admins and agents can read clients" ON public.clients
+    FOR SELECT USING (EXISTS (
+        SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('admin', 'agent')
+    ));
+
+-- Admins and agents can manage clients
+CREATE POLICY "Admins and agents can manage clients" ON public.clients
+    FOR ALL USING (EXISTS (
+        SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('admin', 'agent')
+    ));
+
+-- Users can read tickets they created or are assigned to
+CREATE POLICY "Users can read relevant tickets" ON public.tickets
+    FOR SELECT USING (
+        created_by = auth.uid() OR 
+        assigned_to = auth.uid() OR
+        EXISTS (
+            SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('admin', 'agent')
+        )
+    );
+
+-- Admins and agents can manage tickets
+CREATE POLICY "Admins and agents can manage tickets" ON public.tickets
+    FOR ALL USING (EXISTS (
+        SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('admin', 'agent')
+    ));
+
+-- Users can read conversations for tickets they have access to
+CREATE POLICY "Users can read relevant conversations" ON public.conversations
+    FOR SELECT USING (
+        EXISTS (
+            SELECT 1 FROM public.tickets 
+            WHERE id = ticket_id AND (
+                created_by = auth.uid() OR 
+                assigned_to = auth.uid() OR
+                EXISTS (
+                    SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('admin', 'agent')
+                )
+            )
+        )
+    );
+
+-- Users can create conversations for tickets they have access to
+CREATE POLICY "Users can create conversations" ON public.conversations
+    FOR INSERT WITH CHECK (
+        sender_id = auth.uid() AND
+        EXISTS (
+            SELECT 1 FROM public.tickets 
+            WHERE id = ticket_id AND (
+                created_by = auth.uid() OR 
+                assigned_to = auth.uid() OR
+                EXISTS (
+                    SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('admin', 'agent')
+                )
+            )
+        )
+    );
+
+-- Users can read their own notifications
+CREATE POLICY "Users can read own notifications" ON public.notifications
+    FOR SELECT USING (user_id = auth.uid());
+
+-- Users can update their own notifications
+CREATE POLICY "Users can update own notifications" ON public.notifications
+    FOR UPDATE USING (user_id = auth.uid());
+
+-- Admins and agents can create notifications
+CREATE POLICY "Admins and agents can create notifications" ON public.notifications
+    FOR INSERT WITH CHECK (EXISTS (
+        SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('admin', 'agent')
+    ));</pre>
+        </div>
+
+        <div class="step">
+            <h3>✅ Passo 3: Verificar Execução</h3>
+            <p>Após executar o SQL, você deve ver:</p>
+            <ul>
+                <li>✅ <strong>5 tabelas criadas:</strong> users, clients, tickets, conversations, notifications</li>
+                <li>✅ <strong>Políticas RLS ativadas</strong></li>
+                <li>✅ <strong>Triggers configurados</strong></li>
+                <li>✅ <strong>Índices criados</strong></li>
+            </ul>
+        </div>
+
+        <div class="step">
+            <h3>🧪 Passo 4: Testar a Conexão</h3>
+            <p>Após executar o schema, execute no terminal:</p>
+            <div class="code">node scripts/test-connection.js</div>
+            <p>Você deve ver todas as tabelas como "✅ OK"</p>
+        </div>
+
+        <div class="step">
+            <h3>🚀 Passo 5: Executar a Aplicação</h3>
+            <p>Execute no terminal:</p>
+            <div class="code">npm run dev</div>
+            <p>Acesse: <a href="http://localhost:3000" target="_blank" class="link">http://localhost:3000</a></p>
+        </div>
+
+        <div class="warning">
+            <h3>⚠️ Importante</h3>
+            <p>Se você encontrar erros durante a execução do SQL, certifique-se de que:</p>
+            <ul>
+                <li>Está logado no painel do Supabase</li>
+                <li>Está no projeto correto (wsphcdeljnboalxsvuun)</li>
+                <li>Copiou todo o SQL sem cortes</li>
+                <li>Aguardou a execução completar</li>
+            </ul>
+        </div>
+
+        <div class="success">
+            <h3>🎉 Após a Execução</h3>
+            <p>O projeto estará 100% funcional com:</p>
+            <ul>
+                <li>✅ Autenticação completa</li>
+                <li>✅ Criação de tickets</li>
+                <li>✅ Gestão de clientes</li>
+                <li>✅ Sistema de conversas</li>
+                <li>✅ Notificações em tempo real</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        function copySQL() {
+            const sqlContent = document.getElementById('sqlContent').textContent;
+            navigator.clipboard.writeText(sqlContent).then(function() {
+                alert('✅ SQL copiado para a área de transferência!');
+            }, function(err) {
+                console.error('Erro ao copiar: ', err);
+                // Fallback para navegadores mais antigos
+                const textArea = document.createElement('textarea');
+                textArea.value = sqlContent;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                alert('✅ SQL copiado para a área de transferência!');
+            });
+        }
+    </script>
+</body>
+</html>
