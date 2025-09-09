@@ -1,4 +1,5 @@
-#!/usr/bin/env node
+
+
 
 const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
