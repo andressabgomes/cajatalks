@@ -56,6 +56,9 @@
       },
       "scripts": {
           "dev": "vite",
-          "build": "vite build"
+          "build": "vite build",
+          "preview": "vite preview",
+          "vercel-build": "vite build",
+          "start": "vite preview --port 3000"
       }
   }

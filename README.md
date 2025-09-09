@@ -44,21 +44,39 @@ npm install
 3. Execute o schema SQL em `supabase/schema.sql` no painel do Supabase
 4. Siga o guia completo em [docs/BACKEND_SETUP.md](docs/BACKEND_SETUP.md)
 
-### 3. Executar em Desenvolvimento
+### 3. Deploy no Vercel (Recomendado)
+
+1. Conecte o Supabase ao Vercel (integração automática)
+2. Importe o repositório no [Vercel](https://vercel.com)
+3. Configure as variáveis de ambiente
+4. Siga o guia em [docs/VERCEL_DEPLOYMENT.md](docs/VERCEL_DEPLOYMENT.md)
+
+### 4. Executar em Desenvolvimento
 
 ```bash
 npm run dev
 ```
 
-### 4. Build para Produção
+### 5. Build para Produção
 
 ```bash
 npm run build
 ```
 
+### 6. Deploy no Vercel
+
+```bash
+# Push para o GitHub (deploy automático)
+git add .
+git commit -m "feat: nova funcionalidade"
+git push origin main
+```
+
 ## 📚 Documentação
 
 - **[Configuração do Backend](docs/BACKEND_SETUP.md)** - Guia completo para configurar o Supabase
+- **[Deploy no Vercel](docs/VERCEL_DEPLOYMENT.md)** - Deploy e configuração no Vercel
+- **[Integração Supabase + Vercel](docs/SUPABASE_VERCEL_INTEGRATION.md)** - Integração automática
 - **[Exemplo de Uso](src/examples/BackendUsage.tsx)** - Demonstração das funcionalidades do backend
 
 ## 🏗️ Estrutura do Projeto
